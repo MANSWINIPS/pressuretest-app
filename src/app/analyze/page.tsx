@@ -323,7 +323,7 @@ export default function AnalyzePage() {
         {/* Input */}
         {!result && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Pressure Test your PRD</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Pressure Test your Product Requirement Document (PRD)</h1>
             <p className="text-gray-500 text-sm mb-5">
               Paste your PRD below. Four stakeholders will review it and give you a readiness score.
             </p>

@@ -20,7 +20,7 @@ export default function Home() {
           No sign-up required
         </div>
         <h1 className="text-5xl font-extrabold text-gray-900 leading-tight tracking-tight mb-6">
-          Dry-run your PRD review<br />
+          Dry-run your Product Requirement Document (PRD) review<br />
           <span className="text-indigo-600">before it happens.</span>
         </h1>
         <p className="text-xl text-gray-500 leading-relaxed mb-10 max-w-2xl mx-auto">
