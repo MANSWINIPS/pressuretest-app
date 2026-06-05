@@ -3,6 +3,8 @@
 **Dry-run your PRD review meeting before it happens.**
 Four perspectives, one readiness score, in 30 seconds.
 
+🔗 **Live:** https://pressuretest-app.vercel.app
+
 Built for the Mind the Product *World Product Day 2026 — Everyone Ships Now* hackathon.
 
 ---
@@ -88,4 +90,11 @@ The model is a one-line swap in `src/app/api/analyze/route.ts` and `src/app/api/
 ## License
 
 MIT
+
+---
+
+## Links
+
+- **Live app:** https://pressuretest-app.vercel.app
+- **GitHub:** https://github.com/MANSWINIPS/pressuretest-app
 
