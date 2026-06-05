@@ -262,6 +262,9 @@ export default function AnalyzePage() {
                 <p className="text-gray-500 text-sm mb-4">
                   Based on how your engineering lead, designer, sales lead, and CFO would react in a review meeting.
                 </p>
+                <p className="text-[11px] text-gray-400 mb-4 italic">
+                  Powered by the free Groq + Llama 3.3 tier. Upgrading to a premium model (GPT-4o, Claude Opus, Llama 405B) yields sharper, more consistent scores.
+                </p>
                 <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                   <button
                     onClick={handleShare}

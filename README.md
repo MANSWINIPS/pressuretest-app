@@ -31,8 +31,8 @@ ChatGPT is the engine. This is the car.
 ## Stack
 
 - **Next.js 16** App Router, TypeScript, Tailwind CSS
-- **Groq + Llama 3.3 70B** for analysis & rewrites (free, sub-second)
-- File-system result store (no DB needed)
+- **Groq + Llama 3.3 70B** for analysis & rewrites (free tier, sub-second)
+- Stateless — share permalinks encode the full result in the URL, no DB needed
 - Vercel-ready
 
 ## Local setup
@@ -65,7 +65,6 @@ src/
     api/
       analyze/route.ts    # POST: PRD → 4-persona analysis
       rewrite/route.ts    # POST: paragraph → rewritten paragraph
-      result/route.ts     # GET:  load saved result by id
   components/
     ScoreRing.tsx         # SVG donut score
     PersonaCard.tsx       # Animated expandable persona card
@@ -73,8 +72,18 @@ src/
   lib/
     prompts.ts            # 4-persona system prompts
     types.ts              # Shared TypeScript types
-    store.ts              # File-system result storage
+    share.ts              # base64url encode/decode result for share URLs
 ```
+
+## Limitations & roadmap
+
+This build runs on the **free Groq + Llama 3.3 70B tier** — chosen because it's free, fast, and good enough to prove the concept end-to-end inside the hackathon window. A few honest caveats:
+
+- **Scoring variance** — even at `temperature: 0` with a fixed seed, the open model can drift a couple of points between runs on the same PRD. Upgrading to a premium API (GPT-4o, Claude 3.5/4 Opus, or Llama 405B on a paid endpoint) makes scores and rewrites visibly sharper and more consistent.
+- **Context window** — very long PRDs (>15k tokens) are truncated by the free tier; paid tiers handle full product specs comfortably.
+- **Persona depth** — currently four hard-coded stakeholders. Roadmap: customizable personas (security, legal, support) and team-specific tone profiles.
+
+The model is a one-line swap in `src/app/api/analyze/route.ts` and `src/app/api/rewrite/route.ts`.
 
 ## License
 
