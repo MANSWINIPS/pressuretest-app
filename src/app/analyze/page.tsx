@@ -2,11 +2,29 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { AnalysisResult } from "@/lib/types";
+import { AnalysisResult, PersonaResult, PersonaBullet } from "@/lib/types";
 import { encodeResult } from "@/lib/share";
 import PersonaCard from "@/components/PersonaCard";
 import ScoreRing from "@/components/ScoreRing";
 import DiffView from "@/components/DiffView";
+
+declare global {
+  interface Window {
+    pendo?: {
+      track: (eventName: string, properties?: Record<string, unknown>) => void;
+    };
+  }
+}
+
+function pendoTrack(eventName: string, properties?: Record<string, unknown>) {
+  try {
+    if (typeof window !== "undefined" && window.pendo) {
+      window.pendo.track(eventName, properties);
+    }
+  } catch {
+    // Do not let tracking failures break application flow
+  }
+}
 
 const DEMO_PRD = `# Feature: Notifications v2
 
@@ -83,6 +101,8 @@ export default function AnalyzePage() {
   const [prdCopied, setPrdCopied] = useState(false);
   const [showPrd, setShowPrd] = useState(false);
   const diffRef = useRef<HTMLDivElement>(null);
+  const rewriteCountRef = useRef(0);
+  const previousResultRef = useRef<AnalysisResult | null>(null);
 
   async function handleAnalyze() {
     if (prd.trim().length < 50) {
@@ -103,8 +123,37 @@ export default function AnalyzePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Analysis failed");
       setResult(data);
+
+      const isDemoPrd = prd.trim() === DEMO_PRD.trim();
+      const isRetest = result !== null;
+      const engPersona = data.personas?.find((p: PersonaResult) => p.id === "eng");
+      const designPersona = data.personas?.find((p: PersonaResult) => p.id === "design");
+      const salesPersona = data.personas?.find((p: PersonaResult) => p.id === "sales");
+      const cfoPersona = data.personas?.find((p: PersonaResult) => p.id === "cfo");
+      const allBullets = data.personas?.flatMap((p: PersonaResult) => p.bullets) ?? [];
+      pendoTrack("prd_analysis_completed", {
+        prdLength: prd.length,
+        overallScore: data.overallScore,
+        engScore: engPersona?.score,
+        designScore: designPersona?.score,
+        salesScore: salesPersona?.score,
+        cfoScore: cfoPersona?.score,
+        redBulletCount: allBullets.filter((b: PersonaBullet) => b.severity === "red").length,
+        yellowBulletCount: allBullets.filter((b: PersonaBullet) => b.severity === "yellow").length,
+        greenBulletCount: allBullets.filter((b: PersonaBullet) => b.severity === "green").length,
+        isRetest,
+        isDemoPrd,
+        resultId: data.id,
+      });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(errorMessage);
+
+      pendoTrack("prd_analysis_failed", {
+        prdLength: prd.length,
+        errorMessage: errorMessage.substring(0, 100),
+        isRetest: result !== null,
+      });
     } finally {
       setLoading(false);
     }
@@ -120,10 +169,11 @@ export default function AnalyzePage() {
       diffRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
 
+    const persona = result.personas.find((p) => p.id === personaId);
+    const redBullets =
+      persona?.bullets.filter((b) => b.severity === "red").map((b) => b.text) ?? [];
+
     try {
-      const persona = result.personas.find((p) => p.id === personaId);
-      const redBullets =
-        persona?.bullets.filter((b) => b.severity === "red").map((b) => b.text) ?? [];
       const res = await fetch("/api/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,8 +187,24 @@ export default function AnalyzePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Rewrite failed");
       setRewrite({ original: paragraph, rewritten: data.rewritten });
+
+      pendoTrack("paragraph_rewrite_completed", {
+        personaId,
+        personaName: persona?.name ?? "Reviewer",
+        redBulletCount: redBullets.length,
+        originalParagraphLength: paragraph.length,
+        rewrittenParagraphLength: data.rewritten?.length ?? 0,
+        overallScore: result?.overallScore,
+      });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Rewrite failed.");
+      const errorMessage = err instanceof Error ? err.message : "Rewrite failed.";
+      setError(errorMessage);
+
+      pendoTrack("paragraph_rewrite_failed", {
+        personaId,
+        personaName: persona?.name ?? "Reviewer",
+        errorMessage: errorMessage.substring(0, 100),
+      });
     } finally {
       setRewriting(false);
     }
@@ -153,6 +219,17 @@ export default function AnalyzePage() {
     // Replace the original paragraph in the PRD with the rewrite.
     const updatedPrd = replaceParagraph(prd, rewrite.original, rewrite.rewritten);
     const prdChanged = updatedPrd !== prd;
+
+    pendoTrack("rewrite_accepted", {
+      originalParagraphLength: rewrite.original.length,
+      rewrittenParagraphLength: rewrite.rewritten.length,
+      prdSuccessfullyUpdated: prdChanged,
+      overallScoreBefore: result?.overallScore,
+    });
+
+    // Save current result for score delta tracking
+    previousResultRef.current = result;
+    rewriteCountRef.current += 1;
     setPrd(updatedPrd);
     setRewrite(null);
 
@@ -173,6 +250,31 @@ export default function AnalyzePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Re-analysis failed");
       setResult(data);
+
+      const prev = previousResultRef.current;
+      const prevEng = prev?.personas?.find((p) => p.id === "eng");
+      const prevDesign = prev?.personas?.find((p) => p.id === "design");
+      const prevSales = prev?.personas?.find((p) => p.id === "sales");
+      const prevCfo = prev?.personas?.find((p) => p.id === "cfo");
+      const newEng = data.personas?.find((p: PersonaResult) => p.id === "eng");
+      const newDesign = data.personas?.find((p: PersonaResult) => p.id === "design");
+      const newSales = data.personas?.find((p: PersonaResult) => p.id === "sales");
+      const newCfo = data.personas?.find((p: PersonaResult) => p.id === "cfo");
+      pendoTrack("prd_rescored_after_rewrite", {
+        previousOverallScore: prev?.overallScore,
+        newOverallScore: data.overallScore,
+        scoreDelta: prev ? data.overallScore - prev.overallScore : undefined,
+        previousEngScore: prevEng?.score,
+        newEngScore: newEng?.score,
+        previousDesignScore: prevDesign?.score,
+        newDesignScore: newDesign?.score,
+        previousSalesScore: prevSales?.score,
+        newSalesScore: newSales?.score,
+        previousCfoScore: prevCfo?.score,
+        newCfoScore: newCfo?.score,
+        rewriteCount: rewriteCountRef.current,
+      });
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Re-analysis failed.");
@@ -188,6 +290,15 @@ export default function AnalyzePage() {
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+
+    pendoTrack("result_shared", {
+      overallScore: result.overallScore,
+      resultId: result.id,
+      personaCount: result.personas?.length ?? 0,
+      hasRewrite: rewrite !== null,
+      prdSnippetLength: result.prdSnippet?.length ?? 0,
+    });
+
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
