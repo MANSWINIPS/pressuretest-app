@@ -81,7 +81,7 @@ This build runs on the **free Groq + Llama 3.3 70B tier** — chosen because it'
 
 - **Scoring variance** — even at `temperature: 0` with a fixed seed, the open model can drift a couple of points between runs on the same PRD. Upgrading to a premium API (GPT-4o, Claude 3.5/4 Opus, or Llama 405B on a paid endpoint) makes scores and rewrites visibly sharper and more consistent.
 - **Context window** — very long PRDs (>15k tokens) are truncated by the free tier; paid tiers handle full product specs comfortably.
-- **Persona depth** — currently four hard-coded stakeholders. Roadmap: customizable personas (security, legal, support) and team-specific tone profiles.
+- **Persona depth** — currently four stakeholders (Engineering Lead, Designer, Sales Lead, CFO). Roadmap: customizable personas (security, legal, support) and team-specific tone profiles.
 
 The model is a one-line swap in `src/app/api/analyze/route.ts` and `src/app/api/rewrite/route.ts`.
 
