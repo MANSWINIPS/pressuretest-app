@@ -53,7 +53,6 @@ Open http://localhost:3000.
 | Variable | Required | Notes |
 |---|---|---|
 | `GROQ_API_KEY` | yes | Free at https://console.groq.com/keys |
-| `HTTPS_PROXY` | no | Only for corporate proxies in local dev |
 
 ## Project structure
 
