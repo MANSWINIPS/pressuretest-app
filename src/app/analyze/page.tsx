@@ -150,11 +150,18 @@ export default function AnalyzePage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
 
-    // Replace the original paragraph in the PRD with the rewrite,
-    // then re-analyze so the score updates.
+    // Replace the original paragraph in the PRD with the rewrite.
     const updatedPrd = replaceParagraph(prd, rewrite.original, rewrite.rewritten);
+    const prdChanged = updatedPrd !== prd;
     setPrd(updatedPrd);
     setRewrite(null);
+
+    // If the paragraph couldn't be located (already replaced, etc.), keep
+    // the existing score instead of pinging the model with the same input.
+    if (!prdChanged) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
     setLoading(true);
     try {
