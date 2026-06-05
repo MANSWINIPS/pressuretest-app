@@ -1,7 +1,6 @@
 import Groq from "groq-sdk";
 import { AnalysisResult, PersonaResult } from "@/lib/types";
 import { SYSTEM_PROMPT, buildAnalyzePrompt } from "@/lib/prompts";
-import { saveResult } from "@/lib/store";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
@@ -40,8 +39,6 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
       prdSnippet: prd.slice(0, 200),
     };
-
-    await saveResult(result);
 
     return Response.json(result);
   } catch (err) {

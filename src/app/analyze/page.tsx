@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { AnalysisResult } from "@/lib/types";
+import { encodeResult } from "@/lib/share";
 import PersonaCard from "@/components/PersonaCard";
 import ScoreRing from "@/components/ScoreRing";
 import DiffView from "@/components/DiffView";
@@ -120,10 +121,18 @@ export default function AnalyzePage() {
     }, 50);
 
     try {
+      const persona = result.personas.find((p) => p.id === personaId);
+      const redBullets =
+        persona?.bullets.filter((b) => b.severity === "red").map((b) => b.text) ?? [];
       const res = await fetch("/api/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prd, resultId: result.id, personaId, paragraph }),
+        body: JSON.stringify({
+          prd,
+          paragraph,
+          personaName: persona?.name ?? "Reviewer",
+          redBullets,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Rewrite failed");
@@ -167,7 +176,8 @@ export default function AnalyzePage() {
 
   function handleShare() {
     if (!result) return;
-    const url = `${window.location.origin}/result/${result.id}`;
+    const encoded = encodeResult(result);
+    const url = `${window.location.origin}/result/${encoded}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

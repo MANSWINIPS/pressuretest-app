@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getResult } from "@/lib/store";
+import { decodeResult } from "@/lib/share";
 import ScoreRing from "@/components/ScoreRing";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 
 export default async function ResultPage({ params }: Props) {
   const { id } = await params;
-  const result = await getResult(id);
+  const result = decodeResult(id);
 
   if (!result) notFound();
 

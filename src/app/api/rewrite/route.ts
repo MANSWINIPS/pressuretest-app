@@ -1,21 +1,14 @@
 import Groq from "groq-sdk";
 import { REWRITE_SYSTEM_PROMPT, buildRewritePrompt } from "@/lib/prompts";
-import { getResult, saveResult } from "@/lib/store";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
 export async function POST(request: Request) {
   try {
-    const { prd, resultId, personaId, paragraph } = await request.json();
+    const { prd, paragraph, personaName, redBullets } = await request.json();
 
-    const result = await getResult(resultId);
-    if (!result) {
-      return Response.json({ error: "Result not found." }, { status: 404 });
-    }
-
-    const persona = result.personas.find((p) => p.id === personaId);
-    if (!persona) {
-      return Response.json({ error: "Persona not found." }, { status: 404 });
+    if (!paragraph || !personaName) {
+      return Response.json({ error: "Missing paragraph or persona." }, { status: 400 });
     }
 
     const completion = await groq.chat.completions.create({
@@ -28,8 +21,8 @@ export async function POST(request: Request) {
           role: "user",
           content: buildRewritePrompt(
             paragraph,
-            persona.name,
-            persona.bullets.filter((b) => b.severity === "red").map((b) => b.text),
+            personaName,
+            Array.isArray(redBullets) ? redBullets : [],
             prd
           ),
         },
@@ -38,14 +31,7 @@ export async function POST(request: Request) {
     const raw = completion.choices[0]?.message?.content ?? "";
     const parsed = JSON.parse(raw.replace(/```json\n?|```/g, "").trim());
 
-    result.rewrite = {
-      original: paragraph,
-      rewritten: parsed.rewritten,
-      personaId,
-    };
-    await saveResult(result);
-
-    return Response.json({ rewritten: parsed.rewritten, resultId });
+    return Response.json({ rewritten: parsed.rewritten });
   } catch (err) {
     console.error("rewrite error", err);
     return Response.json(
